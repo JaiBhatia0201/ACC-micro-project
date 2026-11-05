@@ -1,0 +1,60 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: placement
+      POSTGRES_PASSWORD: placement
+      POSTGRES_DB: placement
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U placement -d placement" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: cgr.dev/chainguard/minio:latest
+    user: root
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - miniodata:/data
+    ports:
+      - "9001:9001" # MinIO console, handy for the demo
+
+  backend:
+    build: ./backend
+    image: placement-backend:v1
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: placement
+      DB_USER: placement
+      DB_PASSWORD: placement
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: resumes
+      JWT_SECRET: change-me-in-compose
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    ports:
+      - "8000:8000" # direct access to Swagger at /docs
+
+  frontend:
+    build: ./frontend
+    image: placement-frontend:v1
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+volumes:
+  pgdata:
+  miniodata:

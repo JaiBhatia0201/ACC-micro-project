@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: placement-config
+  namespace: placement
+data:
+  DB_HOST: postgres-service
+  DB_PORT: "5432"
+  DB_NAME: placement
+  DB_USER: placement
+  MINIO_ENDPOINT: minio-service:9000
+  MINIO_BUCKET: resumes
